@@ -277,24 +277,24 @@ const getWorksBy = (id, field) => {
   switch (field) {
     case 'circle':
       return knex('t_work')
-        .select('id')
+        .select('id', 'release', 'dl_count', 'review_count', 'price', 'rate_average_2dp')
         .where('circle_id', '=', id);
 
     case 'tag':
       workIdQuery = knex('r_tag_work').select('work_id').where('tag_id', '=', id);
       return knex('t_work')
-        .select('id')
+        .select('id', 'release', 'dl_count', 'review_count', 'price', 'rate_average_2dp')
         .where('id', 'in', workIdQuery);
 
     case 'va':
       workIdQuery = knex('r_va_work').select('work_id').where('va_id', '=', id);
       return knex('t_work')
-        .select('id')
+        .select('id', 'release', 'dl_count', 'review_count', 'price', 'rate_average_2dp')
         .where('id', 'in', workIdQuery);
 
     default:
       return knex('t_work')
-        .select('id');
+        .select('id', 'release', 'dl_count', 'review_count', 'price', 'rate_average_2dp');
   }
 };
 
@@ -303,10 +303,10 @@ const getWorksBy = (id, field) => {
  * @param {String} keyword 
  */
 const getWorksByKeyWord = (keyword) => {
-  const workid = keyword.match(/RJ(\d{6})/) ? keyword.match(/RJ(\d{6})/)[1] : '';
+const workid = keyword.match(/((R|r)(J|j))?(\d{6})/) ? keyword.match(/((R|r)(J|j))?(\d{6})/)[4] : '';
   if (workid) {
     return knex('t_work')
-      .select('id')
+      .select('id', 'release', 'dl_count', 'review_count', 'price', 'rate_average_2dp')
       .where('id', '=', workid);
   }
 
@@ -411,158 +411,67 @@ const deleteUser = users => knex.transaction(trx => trx('t_user')
 
 
 /**
- * 创建一个新用户收藏列表
- * @param {String} username
- * @param {Object} mylist User Mylist object.
+ * 创建一个新用户收藏夹
+ * @param {Object} favorite User Favorite object.
  */
-const createUserMylist = (username, mylist) => knex.transaction(trx => 
-  trx('t_mylist')
-    .insert({
-      user_name: username,
-      name: mylist.name,
-      works: JSON.stringify(mylist.works)
-    }));
-
-/**
- * 更新用户收藏列表
- * @param {String} username
- * @param {Object} newMylist User mylist object.
- */
-const updateUserMylist = (username, newMylist) => knex.transaction(trx => trx('t_mylist')
-  .where('id', '=', newMylist.id)
+const createUserFavorite = (username, favorite) => knex.transaction(trx => trx('t_favorite')
+  .where('name', '=', favorite.name)
   .andWhere('user_name', '=', username)
   .first()
-  .then((res) => {
-    if (!res) {
-      throw new Error(`用户 ${username} 的收藏列表 ${mylistId} 不存在.`);
-    }
-    return trx('t_mylist')
-      .where('id', '=', newMylist.id)
-      .update({
-        name: newMylist.name,
-        works: JSON.stringify(newMylist.works)
-      });
-  }));
-
-/**
- * 删除用户收藏列表
- * @param {String} username
- * @param {Array} mylistNames
- */
-const deleteUserMylists = (username, mylistIds) => knex.transaction(trx => trx('t_mylist')
-  .where('user_name', '=', username)
-  .andWhere('id', 'in', mylistIds)
-  .del());
-
-/**
- * 查询用户所有的收藏列表
- * @param {String} username 
- */
-const getUserMylists = username => knex('t_mylist')
-  .select('id', 'name', 'works')
-  .where('user_name', '=', username)
-  .then(mylists => {
-    return mylists.map((mylist) => {
-      mylist.works = JSON.parse(mylist.works);
-      return mylist;
-    })
-  });
-
-
-/**
- * 创建一个新用户播放列表
- * @param {String} username
- * @param {Object} playlist User Playlist object.
- */
-const createUserPlaylist = (username, playlist) => knex.transaction(trx => trx('t_playlist')
-  .where('name', '=', playlist.name)
-  .andWhere('user_name', '=', username)
-  // .first()
   .then((res) => {
     if (res) {
-      throw new Error(`用户 ${username} 的播放列表 ${playlist.name} 已存在.`);
+      throw new Error(`用户 ${username} 的收藏夹 ${favorite.name} 已存在.`);
     }
-    return trx('t_playlist')
+    return trx('t_favorite')
       .insert({
         user_name: username,
-        name: playlist.name,
-        tracks: JSON.stringify(playlist.tracks)
+        name: favorite.name,
+        works: JSON.stringify(favorite.works)
       });
   }));
 
 /**
- * 更新用户播放列表
- * @param {String} username
- * @param {String} oldpPlaylistName
- * @param {Object} newPlaylist User Playlist object.
+ * 更新用户收藏夹
+ * @param {Object} favorite User favorite object.
  */
-const updateUserPlaylist = (username, oldpPlaylistName, newPlaylist) => knex.transaction(trx => trx('t_playlist')
-  .where('name', '=', oldpPlaylistName)
+const updateUserFavorite = (username, oldFavoriteName, newFavorite) => knex.transaction(trx => trx('t_favorite')
+  .where('name', '=', oldFavoriteName)
   .andWhere('user_name', '=', username)
   .first()
   .then((res) => {
     if (!res) {
-      throw new Error(`用户 ${username} 的播放列表 ${oldpPlaylistName} 不存在.`);
+      throw new Error(`用户 ${username} 的收藏夹 $oldFavoriteName} 不存在.`);
     }
-    return trx('t_playlist')
-      .where('name', '=', oldpPlaylistName)
+    return trx('t_favorite')
+      .where('name', '=', oldFavoriteName)
       .andWhere('user_name', '=', username)
       .update({
-        name: newPlaylist.name,
-        tracks: JSON.stringify(newPlaylist.tracks)
+        name: newFavorite.name,
+        works: JSON.stringify(newFavorite.works)
       });
   }));
 
 /**
- * 删除用户播放列表
- * @param {String} username
- * @param {Array} playlistNames
+ * 更新用户收藏夹
+ * @param {String} user_name User name
+ * @param {Array} favorites User favorites.
  */
-const deleteUserPlaylists = (username, playlistNames) => knex.transaction(trx => trx('t_playlist')
+const deleteUserFavorites = (username, favoriteNames) => knex.transaction(trx => trx('t_favorite')
   .where('user_name', '=', username)
-  .andWhere('name', 'in', playlistNames)
+  .andWhere('name', 'in', favoriteNames)
   .del());
 
-/**
- * 查询用户所有的播放列表
- * @param {String} username 
- */
-const getUserPlaylists = username => knex('t_playlist')
-  .select('name', 'tracks')
+const getUserFavorites = username => knex('t_favorite')
+  .select('name', 'works')
   .where('user_name', '=', username)
-  .then(playlists => playlists.map((playlist) => {
-    playlist.tracks = JSON.parse(playlist.tracks);
-    return playlist;
+  .then(favorites => favorites.map((favorite) => {
+    favorite.works = JSON.parse(favorite.works);
+    return favorite;
   }));
 
 
 module.exports = {
   knex, insertWorkMetadata, getWorkMetadata, removeWork, getWorksBy, getWorksByKeyWord, updateWorkMetadata, getLabels,
   createUser, updateUserPassword, resetUserPassword, deleteUser,
-  createUserMylist, updateUserMylist, deleteUserMylists, getUserMylists,
-  createUserPlaylist, updateUserPlaylist, deleteUserPlaylists, getUserPlaylists
+  createUserFavorite, updateUserFavorite, deleteUserFavorites, getUserFavorites
 };
-
-createUserMylist('admin', {
-  name: 'h00 0fff 000fg',
-  works: [
-    {
-      id: 267610,
-      title: 'Hな小悪魔と初めてのヒプノシスプレイ',
-      circle: {
-        name: 'RadioERO',
-        id: 123232
-      }
-    },
-    {
-      id: 260230,
-      title: 'お菓子みたいな甘ぁ～い催眠はいかがですか',
-      circle: {
-        name: 'Transparent Chorion',
-        id: 122666
-      }
-    }
-  ]
-}).then((res) => {
-  console.log(res)
-})
